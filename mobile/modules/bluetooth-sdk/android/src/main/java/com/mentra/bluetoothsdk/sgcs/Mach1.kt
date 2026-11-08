@@ -61,6 +61,19 @@ class Mach1 : SGCManager() {
 
         private const val TAP_DEBOUNCE_TIME = 80L // milliseconds
 
+        /**
+         * Maps a Vuzix tap count to the touch gesture name miniapps receive
+         * through `session.input.onTouch`. The Ultralite SDK reports up to 3 taps.
+         */
+        @JvmStatic
+        fun tapGestureName(tapCount: Int): String? =
+            when (tapCount) {
+                1 -> "single_tap"
+                2 -> "double_tap"
+                3 -> "triple_tap"
+                else -> null
+            }
+
         @JvmStatic
         fun maybeReverseRTLString(text: String): String {
             val result = StringBuilder()
@@ -400,6 +413,13 @@ class Mach1 : SGCManager() {
 
             lastTapTime = currentTime
             Log.d(TAG, "Ultralite go tap n times: " + tapCount)
+
+            // Forward the tap count to miniapps as a touch gesture
+            // (session.input.onTouch), like G2, Nimo, and the R1 ring do. Sent
+            // before the dashboard toggle so miniapps see the exact count first.
+            tapGestureName(tapCount)?.let { gesture ->
+                Bridge.sendTouchEvent(this@Mach1.type, gesture, currentTime)
+            }
 
             // Toggle dashboard on 2+ taps (same as iOS implementation)
             if (tapCount >= 2) {
